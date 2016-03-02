@@ -13,3 +13,5 @@ auto-make: http://www.linuxselfhelp.com/gnu/automake/html_chapter/automake_5.htm
 architecture: http://www.pcmag.com/encyclopedia/term/40139/computer-architecture
 platform: http://www.pcmag.com/encyclopedia/term/44113/hardware-platforms
 
+set tags in vim:
+http://stackoverflow.com/questions/563616/vim-and-ctags-tips-and-tricks
