@@ -1,0 +1,16 @@
+http://www2.thu.edu.tw/~emtools/Embedded%20Tool%20Chain/Middleware/bootloader.pdf
+
+1st stage:
++ Initialize HW components
++ Prepare memory space for loading 2nd Stage program
++ Copy 2nd Stage program into memory space
++ Set up Stack Pointer
++ Jump to entry point of 2nd Stage program
+
+2nd stage:
++ Initialize HW components used in this stage
++ Check memory map
++ Copy kernel and root file system images into memory
++ Set parameters
++ Boot kernel
+
