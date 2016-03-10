@@ -14,3 +14,11 @@ http://www2.thu.edu.tw/~emtools/Embedded%20Tool%20Chain/Middleware/bootloader.pd
 + Set parameters
 + Boot kernel
 
+https://www.quora.com/In-simple-terms-what-is-the-difference-between-a-linker-loader-and-locator
++ undefined symbol: a symbol used but not defined in the same file
+
+Root File System (RFS):
++ contains the user space applications and libraries, services daemons, and 
+  initialization scripts/programs that ur Linux ES will need
+
+

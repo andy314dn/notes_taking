@@ -1,7 +1,8 @@
 // link to read 2016-03-01
 http://www.codingunit.com/
 http://www.tutorialspoint.com/c_standard_library/
-https://en.wikibooks.org/wiki/A_Little_C_Primer/C_String_Function_Library
+https://en.wikibooks.org/wiki/A_Little_C_Primer/
+http://mrbook.org/blog/tutorials/make/
 
 https://launchpad.net/gcc-arm-embedded/+download
 
@@ -17,7 +18,6 @@ platform: http://www.pcmag.com/encyclopedia/term/44113/hardware-platforms
 
 set tags in vim:
 http://stackoverflow.com/questions/563616/vim-and-ctags-tips-and-tricks
-http://mrbook.org/blog/tutorials/make/
 auto completion: Ctrl + N
 
 Linux device driver tutorials:
@@ -25,4 +25,9 @@ Linux device driver tutorials:
 2/ http://www.freesoftwaremagazine.com/articles/drivers_linux
 3/ http://derekmolloy.ie/category/general/linux/
 
+MAKE Documentation:
+http://www.gnu.org/software/make/manual/make.html
+
+GIT how to:
+http://linux.yyz.us/git-howto.html
 
