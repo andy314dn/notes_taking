@@ -47,3 +47,6 @@ sach tu hoc: he-dieu-hanh-1.1.pdf va cac slide lien quan
 
 The Linux Kernel Module Programming Guide:
 + http://www.tldp.org/LDP/lkmpg/2.6/html/lkmpg.html
+
+create z_local_aliases.sh in /etc/profile.d/: for su alias
+
