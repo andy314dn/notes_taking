@@ -1,0 +1,101 @@
+4.2 Linux kernel construction
+from top-level kernel source tree, after successful build:
++ System.map: contains a human-readable list of kernel symbols
+	and their respective addresses
++ vmlinux - the kernel proper: an architecture-specific ELF file in executable
+	format. It is produced by the top-level kernel for every architecture.
+	If the kernel was compiled with symbolic debug info, it will be 
+	contained in the vmlinux image. This file is never booted directly
+	It is a fully stand-alon, monolithic ELF image. Monolithic means
+	vmlinux binary contains no unresolved external references.
+Monolithic structure: entire kernel is compiled and linked as a single
+	statically linked executable
+
+output of kernel build system:
++ several common files (regardless of the architecture)
++ one or more architecture-specific binary modules
+
+.lds: linker script file - a detailed recipe for how the kernel binary
+	image should be linked
+
+head.o (of vmlinux): in .../arch/arm/kernel/head.S
+	This is an architecture-specific assembly lang source file that 
+	performs very low-level kernel initialization
+	It is the first code found in the binary image (vmlinux) created
+	by the link stage
+
+init_task.o: in .../arch/arm/kernel  or in .../init/init_task.c
+	It sets up initial thread and task structures that the kernel requires.
+
+built-in.o: a large collection of object modules.
+	Each built-in.o object comes from a specific part of the kernel
+	source tree. These are the binary objects that are included in
+	the kernel image.
+
+The kernel contains some architecture-specific functionality, e.g. low-level
+	context switching, hardware-level interrupt and timer processing,
+	processor exception handling, and more. This is found 
+	in .../arch/arm/kernel
+Each architecture and machine type (processor/reference board) has different
+	elements in the architecture-specific portions of the kernel
+
+
+4.3 Kernel build sytem
+dot-config file: the configuration blueprint for building a Linux kernel image
+
+=m: dynamically loadable module, be inserted into the running kernel 
+	after boot
+=y: module is compiled and statically linked as part of the kernel image itself.
+	For example, USB (=y) module would end up in the .../drivers/built-in.o
+	composite binary
+
+How the kernel config is accessed by various kernel modules:
+	Most kernel software modules also read the configuration indirectly
+	via the .config as follows. During the build process, the .config file
+	is processed into a C header file found in the .../include/linux
+	directory, called 'autoconf.h'. The kernel build files include this
+	autoconf.h file into every kernel compile command line, using the
+	-include gcc directive
+
+make (no target): generates the kernel ELF file vmlinux and the default
+	binary image for your chosen architecture (e.g. bzImage for x86).
+	Also, it will build all the device driver modules (kernel loadable
+	modules) specified by the configuration
+	Many architectures and machine types require binary targets specific 
+	to the architecture and bootloader in use. One of the more common
+	architecture-specific targets is zImage. In many architectures, this
+	is the default target image that can be loaded and run on the target
+	embedded system.
+
+4.4 Kernel configuration
+Kconfig drives the configuration process for the features contained within 
+	its subdirectory. The contents of Kconfig are parsed by the 
+	configuration subsystem, which presents configuration choices to
+	the user and contains help text associated with a given configuration
+	parameter
+	The configuration utility, e.g. gconf, reads the Kconfig files
+	starting from the arch subdirectory's Kconfig file
+	All Kconfig files taken together determine the configuration menu
+	structure and configuration options presented to the user during
+	kernel configuration
+
+
+4.5 Kernel documentation:
+The Linux Documentation Project: www.tlfp.org
+
+
+5.1 Composite Kernel image: Piggy and Friends
+Upon power-on, the bootloader in an ES is the first software to get processor
+	control. After the bootloader has performed some low-level hardware
+	initialization, control is passed to the Linux kernel
+	This action can be a manual sequence of events to facilitate the
+	development process (e.g. the user types interactive load/boot cmds
+	at the bootloader prompt), or it can be an automated startup sequence
+	typical of a production environment.
+
+In the final sequence of steps in the kernel build process (listing 5-1), we
+	see vmlinux, System.map, then piggy.* is created. Then vmlinux, zImage
+	are created.
+
+
+

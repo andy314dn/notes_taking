@@ -4,9 +4,6 @@ command link: http://www.pixelbeat.org/cmdline.html
 link help for makefile: https://www3.ntu.edu.sg/home/ehchua/programming/cpp/gcc_make.html
 
 
-http://superuser.com/questions/110054/custom-vim-highlighting
-
-
 // link to read 2016-03-01
 http://www.codingunit.com/
 http://www.tutorialspoint.com/c_standard_library/
@@ -22,8 +19,7 @@ http://www.thegeekstuff.com/2010/11/strings-command-examples/
 
 auto-make: http://www.linuxselfhelp.com/gnu/automake/html_chapter/automake_5.html
 
-architecture: http://www.pcmag.com/encyclopedia/term/40139/computer-architecture
-platform: http://www.pcmag.com/encyclopedia/term/44113/hardware-platforms
+find DEFinition: http://www.pcmag.com/encyclopedia/ 
 
 set tags in vim:
 http://stackoverflow.com/questions/563616/vim-and-ctags-tips-and-tricks
