@@ -6,7 +6,7 @@ from top-level kernel source tree, after successful build:
 	format. It is produced by the top-level kernel for every architecture.
 	If the kernel was compiled with symbolic debug info, it will be 
 	contained in the vmlinux image. This file is never booted directly
-	It is a fully stand-alon, monolithic ELF image. Monolithic means
+	It is a fully stand-alone, monolithic ELF image. Monolithic means
 	vmlinux binary contains no unresolved external references.
 Monolithic structure: entire kernel is compiled and linked as a single
 	statically linked executable
@@ -30,7 +30,10 @@ init_task.o: in .../arch/arm/kernel  or in .../init/init_task.c
 built-in.o: a large collection of object modules.
 	Each built-in.o object comes from a specific part of the kernel
 	source tree. These are the binary objects that are included in
-	the kernel image.
+	the kernel image (including arch/arm/mm, arch/arm/common, 
+	arch/arm/mach-ixp4xx, arch/arm/nwfpe, kernel/, mm/, fs/, ipc/,
+	security/, crypto/, block/, arch/arm/lib, lib/, arch/arm/lib,
+	lib/, drivers/, sound/, firmware/, net/, .tmp_kallsyms2).
 
 The kernel contains some architecture-specific functionality, e.g. low-level
 	context switching, hardware-level interrupt and timer processing,
@@ -94,8 +97,507 @@ Upon power-on, the bootloader in an ES is the first software to get processor
 	typical of a production environment.
 
 In the final sequence of steps in the kernel build process (listing 5-1), we
-	see vmlinux, System.map, then piggy.* is created. Then vmlinux, zImage
-	are created.
+	see vmlinux, System.map, Image, then piggy.* are created. Among them 
+	are the architecture-specifc head-xscale.o is created. Then vmlinux, 
+	zImage are created. The architecture-specific object modules contain
+	low-level utility routines needed to boot the kernel.
+	+ Table 5-1 (page 138): description of low-level architecture objects
+	  vmlinux, System.map, Image, head.o, piggy.gz, piggy.o, misc.o,
+	  head-xscale.o, big-endian.o, vmlinux, zImage
+	+ Figure 5-1 (page 139): Composite kernel image construction
+
+The Image object
+	The Image object is created from the vm-linux object. Image is the
+	vmlinux ELF file stripped of redundant sections (notes and comments)
+	and also stripped of any debugging symbols that might present.
+	Image is the kernel proper (vmlinux) converted from ELF to binary form
+	and stripped of debug symbols and the aforementioned .note* and 
+	.comment sections.
+
+Architecture objects
+	They perform low-level architecture and processor-specific tasks.
+	We should pay attention to the sequence of creating the object
+	called 'piggy.o':
+	+ First, the Image file (binary kernel image) is compressed using
+	  gzip command to create piggy.gz (a compressed version of the binary
+	  kernel Image)
+	+ Next, an asm file called 'piggy.S' is assembled, which contains
+	  a reference to the compressed 'piggy.gz'
+	  ==> the binary kernel Image is being piggybacked as payload into
+	      a low-level asm lang 'bootstrap loader'. This bootstrap loader
+	      initializes the processor and required memory regions,
+	      decompresses the binary kernel Image, and loads it into the
+	      proper place in system memory before passing control to it.
+	      (piggy.S is in .../arch/arm/boot/compressed/piggy.S)
+	+ The net result of piggy.S: to contain the compressed binary kernel
+	  Image as a payload within another image - the bootstrap loader
+
+Bootstrap loader
+	Many architectures use a 'bootstrap loader' (second-stage loader) to
+	load the Linux kernel image into memory.
+	It performs checksum verification of the kernel image, decompress and
+	relocate the kernel image.
+	+ bootloader: controls the board upon power-up and does not rely on the
+	  Linux kernel in any way
+	+ bootstrap loader: acts as the 'glue' between a bare metal bootloader
+	  and the Linux kernel. It provides a proper context for the kernel
+	  to run in, as well as performs the necessary steps to decompress
+	  and relocate the kernel binary image
+	The bootstrap loader is concatenated to the kernel image for loading.
+	Functions of the bootstrap loader:
+	+ low-level assembly language processor initialization
+	+ decompression and relocation code
+	+ other processor-specific initialization
 
 
+5.2 Initialization Flow of Control (from bootloader to kernel)
+bootloader: the low-level component that resides in system nonvolatile memory
+	(Flash or ROM). It takes control immediately after the power has been
+	applied. It is typically a small, simple set of routines designed
+	primarily to do low-level initialization, OS image loading, and
+	system diagnostics... Finally, it contains logic for loading & passing
+	control to another program, usually OS such as Linux.
+	When power is first applied, the bootloader is invoked and proceeds to
+	load the OS. When the bootloader locates and loads the OS image (which
+	could be resident locally in Flash, on a hard drive, or via a LAN or 
+	other device), control is passed to that image.
+	On our particular XScale platform, the bootloader passes control to
+	our head.o module at the label 'start' in the bootstrap loader.
+	The bootstrap loader prepended to the kernel image has a single primary
+	responsibility: to create the proper environment to decompress and 
+	relocate the kernel and pass control to it.
+	Control is passed from the bootstrap loader directly to the kernel
+	proper, to a module called head.o.
+	When the bootstrap loader has completed its job, control is passed to
+	the kernel proper's head.o, and from there to start_kernel() in main.c.
 
+Kernel Entry point: head.o (in .../arch/<ARCH>/kernel/head.S
+	The intention of the kernel developers was to keep the architecture-
+	specific 'head.o' module very generic, without any specific machine
+	dependencies.
+	head.o module performs architecture- and often CPU-specific 
+	initialization in preparation for the main body of the kernel. It does:
+	+ check for valid processor and architecture
+	+ create initial page table entries
+	+ enable the processor's memory management unit (MMU)
+	+ establish limited error detection and reporting
+	+ jump to the start of the kernel proper, start_kernel() in main.c
+
+	When the control is first passed to the kernel's head.o from the
+	bootstrap loader, the processor is operating in 'real mode'. It means
+	the logical address contained in the processor's Program Counter is 
+	the actual physical address driven onto the processor's electrical
+	memory address pins. Soon after the processor's registers and kernel
+	data structures are initialized to enable memory translation, the
+	processor's MMU is turned on. Suddenly, the address space as seen by 
+	the processor is yanked (giat lai) from beneath it and replaced by an
+	arbitrary virtual addressing scheme determined by the kernel developers
+	==> physical addresses are replaced by logical addresses the moment
+	the MMU is enabled.
+
+	There is limited available mapping at this early stage of the kernel
+	boot process. Therefore, at this early stage in the boot cycle, you
+	are pretty much guaranteed NOT to have any error messages to help you
+	figure out what's wrong.
+
+Kernel startup: main.c
+	The final task performed by the kernel's own head.o module is to pass
+	the control to the primary kernel startup file written in C. Control
+	is passed from the kernel's first object module (head.o) to the C
+	lang routine start_kernel() located in .../init/main.c. Here the kernel
+	begins to develop a life of its own.
+	main.c does the bulk of the post-assembly-language startup work for the
+	Linux kernel, from initializing the first kernel thread all the way to
+	mounting a root FS and executing the very first user space Linux app
+	program.
+	The function start_kernel() is by far the largest function in main.c.
+	Most of the Linux kernel initialization takes place in this routine.
+
+Architecture setup: setup_arch() in .../arch/arm/kernel/setup.c
+	setup_arch() takes a single parameter - a pointer to the kernel cmd
+	line: e.g. setup_arch(&command_line);. This statement calls an arch-
+	specific setup routine responsible for performing initialization tasks
+	common across each major architecture. Among other functions, 
+	setup_arch() calls functions that identify the specific CPU and
+	provides a mechanism for calling high-level CPU-specific initialization
+	routines. One such function, called directly by setup_arch(), is
+	setup_processor(), found in .../arch/arm/kernel/setup.c. This function
+	verifies the CPU ID and revision, calls CPU-specific initialization
+	functions, and displays several lines of info on the console during
+	boot.
+	One of the final actions of the architecture setup routines is to 
+	perform any machine-dependent initialization. For ARM, you will find
+	machine-specific initialization in the .../arch/arm/mach-* series of
+	directories.
+
+5.3 Kernel command-line processing
+	Following the arch setup, main.c performs generic early kernel 
+	initialization and then displays the kernel command line, e.g.
+	   Kernel command line: console=ttyS0,115200 root=/dev/nfs ip=dhcp
+	In this example, the kernel being booted is instructed to open a 
+	console device on serial port device ttyS0 at a baud rate of 115Kbps.
+	It is being instructed to obtain its initial IP adr info from a DHCP
+	server and to mount a root FS via the NFS protocol.
+
+	Linux typically is launched by a bootloader (or bootstrap loader) with
+	a series of parameters that have come to be called the 'kernel command
+	line'. Although you don't actually invoke the kernel using a command
+	prompt from a shell, many bootloaders can pass parameters to the kernel
+	in a fashion that resembles this well-known model.
+	The bootstrap loader builds the kernel cmd line from a configuration
+	file and passes it to the kernel during the boot process. These cmd
+	line parameters are a boot mechanism to set the initial configuration
+	necessary for proper boot on a given machine.
+
+	command-line parameters are contained in kernel-parameters.txt (in Doc)
+
+	embedded engineers need to comprehend the complexities of a linker
+	script file to fully understand the mechanism of adding kernel cmd-line
+	parameters for their ow specific needs. (read GNU LD manual at
+	https://sourceware.org/binutils/docs/ld/index.html)
+
+the __setup Macro
+	Consider the specification of the console device. We want a console 
+	initialized early in the boot cycle so that we have a destination for
+	message during boot. This initialization takes place in a kernel obj
+	called 'printk.o' (.../kernel/printk.c). The console initialization
+	routine is called console_setup() and takes the kernel cmd-line param
+	string as its only argument.
+	The challenge is to communicate the console parameters specified on the
+	kernel cmd line to the setup and device driver routines that require
+	this data in a modular and general fashion.
+	==> What is needed is a flexible and generic way to pass these kernel
+	cmd-line parameters to their consumers.
+
+	A special macro defined in .../include/linux/init.h is used to
+	associate a portion of the kernel cmd-line string with a function
+	that will act on that portion of the string.
+	In .../kernel/printk.c, we only pay attention to the invocation of the
+	__setup macro. It expects two args: a string literal and a function
+	pointer, e.g. __setup("console=", console_setup);
+
+	The __setup macro can be thought as a registration function for the
+	kernel command-line console parameter. In effect, it says: when the
+	'console=' string is encountered on the kernel cmd line, invoke the 
+	function represented by the second __setup macro argument (e.g. the
+	console_setup() function). But how is this info communicated to the 
+	early setup code, outside this module, which has no knowledge of the
+	console function? The mechanism relies on lists built by the linker.
+
+	The details are hidden in a set of macro whose objective is to build 
+	a static list of string literals associated with function pointers.
+	This list is emitted by the compiler in a separately named ELF section
+	in the final 'vmlinux' ELF image.
+
+	See the definition of __setup family of macros in 
+	.../include/linux/init.h. It contains some macros:
+	__used macro: tell the compiler to emit the function or variable, even
+	if the optimizer determines that it is 'unused'.
+	__attribute__ ((aligned)) macro: tell the compiler to align the 
+	structures on a specific boundary (e.g. sizeof(long))
+	+ The compiler generates an array of characters (a string pointer) 
+	  called __setup_str_console_setup[] initialized to contain the 
+	  string 'console='.
+	+ Next, the compiler generates a structure that contains three members:
+	  a pointer to the kernel cmd-line string (the array just declared),
+	  a pointer to the setup function itself, and a simple flag.
+	+ The key to the magic here is the section attribute attached to
+	  the structure. This attribute instructs the compiler to emit this
+	  structure into a special section within the ELF object module,
+	  called '.init.setup'. 
+	+ During the link stage, all the structures defined using the __setup
+	  macro are collected and placed in this .init.setup section, in effect
+	  creating an array of these structures.
+	+ In .../init/main.c, this data is accessed and used (Listing 5-6)
+	  + kernel command line is parsed in .../kernel/params.c
+	  + the two external structure pointers __setup_start, __setup_end are
+	    defined in a linker script file, not in a C source or header file.
+	    These labels mark the start and end of the array of 
+	    'obs_kernel_param' structures that were placed in the .init.setup
+	    section of the object file.
+	  + The code in Listing 5-6 scans all these structures via the pointer
+	    p to find a match for this particular kernel command-line param.
+	    In this case, the code is searching for the string 'console=' and
+	    finds a match. From the relevant structure, the function pointer
+	    element returns a pointer the console_setup() function, which is
+	    called with the balance of the parameter (the string 
+	    'ttyS0,115200') as its only argument. This process is repeated for
+	    every element in the kernel command line until the kernel cmd-line
+	    has been exhausted.
+	The technique just described, collecting objects into lists in uniquely
+	named ELF sections, is used in many places in the kernel.
+	Another example of this technique is the use of the __init family of 
+	macros to place one-time initialization routines into a common section
+	in the object file. Their cousin __initconst, used to mark one-time-use
+	data items, is used by the __setup macro. Functions and data marked as
+	initialization using these macros are collected into specifically 
+	named ELF sections. Later, after these one-time initialization 
+	functions and data objects have been used, the kernel frees the memory
+	occupied by these items, e.g. kernel message: Freeing init memory:29K
+
+	The use of symbol names preceded with 'obsolete_' is because the 
+	kernel developers are replacing the kernel cmd-line processing 
+	mechanism with a more generic mechanism for registering both boot time
+	and loadable module parameters. New development is expected to use the
+	family of functions defined by the kernel header file
+	.../include/linux/moduleparam.h - most notably, the family of
+	module_param* macros.
+	The new mechanism maintains backward compatibility by including an 
+	unknown function pointer arg in the parsing routine. Thus, parameters
+	that are unknown to the 'module_param*' infrastructure are consider
+	unknown, and the processing falls back to the old mechanism under
+	control of the developer. See .../kernel/params.c and parse_args()
+	calls in .../init/main.c
+
+	The purpose of the 'flag member' of the 'obs_kernel_param' structure
+	created by the __setup macro: the flag in the structure, called early,
+	is used to indicate whether this particular command-line parameter
+	was already consumed earlier in the boot process. Some command-line
+	parameters are intended for consumption very early in the boot process,
+	and this flag provides a mechanism for an early parsing alg. You will
+	find a function in main.c called do_early_param() that traverses the
+	linker-generated array of __setup-generated structures and processes,
+	each one marked for early consumption.
+
+5.4 Subsystem Initialization
+Many kernel subsystems are initialized by the code found in main.c. The linker
+builds lists of function pointers to various initialization routines, and a
+simple loop is used to execute each in turn.
+
+The *__initcall macros (Listing 5-7, page158)
+	__init macro: applies a 'section' attribute to declare that this fnc
+	gets placed in a section called '.init.text' in the 'vmlinux' ELF file.
+	The purpose of placing this function in a special section of the obj
+	file is so that the memory space it occupies can be reclaimed when
+	it is no longer needed.
+
+	the marcro 'arch_initcall(customize_machine)' - part of a family of 
+	macros defined in .../include/linux/init.h. These macros declare a 
+	data item based on the function's name. They also use the 'section'
+	attribute to place this data item in a uniquely named section of the
+	'vmlinux' ELF file. The benefit of this approach is that main.c can
+	call an arbitrary initialization function for a subsystem that it has
+	no knowledge of. The name of the section is '.initcallN.init', where
+	N is the level defined, between 1 and 7. There is a section named for
+	each of the seven levels with an 's' appended. This is intended to be
+	a 'synchronous' initcall. The data item is assigned the address of the
+	function being named in the macro. The data item is placed in the 
+	kernel's obj file in a section called .initcall3.init.
+	The level (N) is used to provide an ordering of initialization calls.
+
+	The family of *_initcall macros can be thought as registration 
+	functions for kernel subsystem initialization routines that need to
+	be run once at kernel startup and never used again. These macros
+	provide a mechanism for causing the initialization routine to be 
+	executed during system startup and a mechanism to discard the code
+	and reclaim the memory after the routine has been executed.
+
+5.5 The 'init' Thread
+The code found in .../init/main.c is responsible for bringing the kernel to
+life. After start_kernel() performs some basic kernel initialization, calling
+early initialization functions explicitly by name, the very first kernel thread
+is spawned.  This thread eventually becomes the kernel thread called 'init()',
+with a process ID (PID) of 1. init() becomes the parent of all Linux processes
+in user space.  At this point in the boot sequence, two distinct threads are
+running: that represented by start_kernel(), and now init(). The former goes on
+to become the 'idle' process, having completed its work. The latter becomes
+the 'init' process.
+
+The start_kernel() function calls rest_init(). The kernel's 'init' process is
+spawned by the call to kernel_thread(), with the function 'kernel_init' as its
+first parameter. 'init' goes on to complete the rest of the system 
+initialization, while the thread of execution started by start_kernel() loops
+forever in the call to cpu_idle().
+The reason for this structure is: We see that start_kernel(), a relatively
+large function, was marked with the __init macro. This means that the memory
+it occupies will be reclaimed during the final stages of kernel initialization.
+It is necessary to exit this function and the address space it occupies before
+reclaiming its memory. The answer to this is for start_kernel() to call
+rest_init(), a much smaller piece of memory that becomes the idle process.
+
+Initialization via 'initcalls'
+When kernel_init() is spawned, it eventually calls 'do_initcalls()', which is
+the function responsible for calling most of the initialization functions
+registered wit the *_initcall family of macros.
+Note for two loop boundaries in do_initcalls() and do_pre_smp_initcalls():
+__initcall_start and __initcall_end. These labels are not found in any C source
+or header file. They are defined in the linker script file used during the link
+stage of vmlinux. These labels mark the beginning and end of the list of
+initialization functions populated using the *_initcall family of macros. You
+can see each of the labels by looking at the 'System.map' file in the top-lv
+kernel directory.
+
+Final boot steps
+Having spawned the 'kernel_init()' thread, and after all the various
+initialization calls have completed, the kernel performs its final steps in the
+boot sequence. These include free the memory used by the initialization 
+functions and data, opening a system console device, and starting the first
+user space process.
+If the code proceeds to the end of the init_post() function, a kernel panic
+results. One way or another, one of the 4 run_init_process() commands must 
+proceed without error.  The 'run_init_process()' function does not return on
+successful invocation. It overwrites the calling process with the new one,
+effectively replacing the current process with the new one. It uses the 
+familiar execve() system call for this functionality. The most common system
+configuration spawn /sbin/init as the user-land initialization process.
+
+One option available to the embedded system developer is to use a custom user-
+land initialization program. That is the purpose of the conditional statement
+in the code snippet of init_post(). If execute_command is non-null, it points
+to a string containing a custom user-supplied command to be executed in user
+space. The developer specifies this command on the kernel command line, and it
+is set via the __setup macro we examined earlier in this chapter.
+A sample kernel cmd line might look like this:
+==>initcall_debug init=/sbin/myinit console=ttyS1,115200 root=/dev/hda1
+   This kernel cmd line instructs the kernel to display all the initialization
+   routines as they are invoked (initcall_debug), configures the initial
+   console device as /dev/ttyS1 at 115Kbps, and executes a custom user space
+   initialization process called 'myinit', which is located in the /sbin dir
+   on the root FS. It directs the kernel to mount its root FS from the device
+   /dev/hda1, which is the first IDE hard drive.
+   NOTE: in general, the order of parameters given on the kernel command line
+   is irrelevant.
+
+
+6.1 Root File System
+Linux requires a Root File System to realize the benefits of its services.
+The root FS refers to the file system mounted at the base of the file system
+hierarchy, designated simply as /. The root FS is simply the first file system
+mounted at the top of the file system hierarchy.
+The root FS has special requirements for a Linux system. Linux expects the 
+root FS to contain programs and utilities to boot the system, initialize
+services such as networking and a system console, load device drivers, and
+mount additional file systems.
+
+FHS - File System Hierarchy Standard
+The FHS establishes a minimum baseline of compatibility between Linux
+distribution and application programs. The FHS standard allows the application
+software (and developers) to predict where certain system elements, including
+files and directories, can be found in the FS.
+
+File System Layout
+Where space is a concern, many ES developers create a very small root FS on a 
+bootable device (e.g. Flash memory). Later, a larger FS is mounted from another
+device, perhaps a hard disk or NFS server. It is not uncommon to mount a larger
+root FS on top of the original small one.
+A simple Linux root FS might contain the following top-level directory entries:
+	bin, dev, etc, home, lib, sbin, usr, var, tmp
+
+Minimal File System
++ bin (busybox, sh->busybox)
++ dev (console)
++ etc( + init.d (rcS))
++ lib (ld-2.3.2.so, ld-linux.so-2->ld-2.3.2.so, libc-2.3.2.so, ...)
+This tiny root FS boots and provides the user with a fully functional command
+prompt on the serial console. Any commands that have been enabled in busybox
+are available to the user.
+The file in /dev is a device node required to open a console device for IO.
+the rcS file in the /etc/init.d directory is the default initialization script
+processed by 'busybox' on startup. Including rcS silences the warning message
+issued by 'busybox' whenever rcS is missing.
+There are also two libraries, glibc and the Linux dynamic loader.  glibc
+contains the standard C library functions, such as printf() and many others
+that most app programs depend on. The Linux dynamic loader is responsible for
+loading the binary executable into memory and perform the dynamic linking
+required by the app's reference to shared library functions. The two additonal
+soft links provide version immunity and backward comptibility for the libraries
+themselves and are found on all Linux systems.
+
+6.2 Kernel's last boot steps
+The final sequence of events for the kernel thread called kernel_init spawned
+by the kernel during the final stages of boots. The run_init_process() is a
+small wrapper around the execve() function, which is a kernel system call
+with rather interesting behavior. The execve() function never returns if no
+error conditions are encountered in the call. The memory space in which the 
+calling thread executes is overwritten by the called program's memory image. In
+effect, the called program directly replaces the calling thread, including 
+inheriting its Process ID (PID)
+Essentially, this is the start of user space processing.
+A key ingredient of the init processes: They are all programs that are expected
+to reside on a root FS. Therefore, we know that we must at least satisfy the
+kernel's requirement for an 'init' process that can execute within its own
+environment.
+
+First User Space Program
+On most Linux systems, /sbin/init is spawned by the kernel on boot. This is why
+it is attempted first. Effectively, this becomes the first user space program
+to run. To review, this is the sequence:
+	1. Mount the root file system
+	2. Spawn the first user space program, which becomes /sbin/init
+It has soft link to busybox ==> It causes 'busybox' to be executed by the
+kernel as the initial process while also satisfying the common requirement for
+a shell executable from user space.
+
+Resolving Dependencies
+For every process you place on your root FS, you must also satisfy its 
+dependencies. Most processes have 2 categories of dependencies:
+	+ those that are needed to satisfy unresolved references within a
+	  dynamically linked executable
+	+ external configuration or data files that an application might need
+For example:
+the init process is a dynamically linked executable. To run init, we need to 
+satisfy its library dependencies using the tool 'ldd'
+to satisfy the second category of dependencies for an executable, the 
+configuration and data files that it might need, there is little substitute
+for some knowledge about how the subsystem works. That is, init expects to read
+its operational configuration from a data file called 'inittab' located on /etc
+
+6.3 The init Process
+The 'init' program together with a family of startup scripts implements what is
+commonly called System V Init, from the original UNIX System V that used this
+schema. We will know examine this powerful system configuration and control
+utility.
+
+init is the ultimate parent of all user space processes in Linux system.
+Furthermore, init provides the default set of environment parameters for all
+other processes to inherit, such as the initial system PATH.
+Its primary role is to spawn additional processes under the direction of a 
+special configuration file. This configuration file is usually stored as 
+/etc/inittab. 
+init has the concept of a runlevel. A runlevel can be thought of
+as 'a system state'. Each runlevel is defined by the services that are enabled
+and programs that are spawned upon entry to that runlevel.
+
+init can exist in a single runlevel at any given time. Runlevels used by init
+include runlevels from 0 to 6 and a special runlevel called S.
+For each runlevel, a set of startup and shutdown scripts is usually provided
+that define the action a system should take for each runlevel. Actions to 
+perform for a given runlevel are determined by the /etc/inittab configuration
+file.
+
+The runlevel scripts are commonly found under a directory called 
+/etc/rc.d/init.d. Here you will find most of the scripts that enable and 
+disable individual services. Services can be configured manually by invoking
+the script and passing one of the appropriate args to the scripts, such as
+start, stop, or restart.
+
+A runlevel is defined by the services that are enabled at that runlevel. Most
+Linux distros contain a directory structure under /etc that contains symbolic
+links to the service scripts in /etc/rc.d/init.d. These runlevel directories
+typically are rooted at /etc/rc.d. Under this directory, you will find a series
+of runlevel directories that contain startup and shutdown specifications for
+each runlevel. init simply executes these scripts upon entry and exit from a
+runlevel. The scripts define the system state, and inittab instructs init which
+scripts to associate with a given runlevel.
+
+Each of the runlevels is defined by the scripts contained in rcN.d, where N is
+the runlevel. Inside each rcN.d directory, you will find numerous symlinks
+arranged in a specific order. These symlinks start with a K(ill) or S(tart).
+The top level script that executes these service startup and shutdown scripts
+is defined in the 'init' configuration file.
+
+inittab
+When init is started, it reads the system configuration file /etc/inittab. This
+file contains directives for each runlevel, as well as directives that apply to
+all runlevels.
+Each runlevel is associated with a script, which must be created by the 
+developer for the desired actions in each runlevel. When this file is read by
+init, the first script to be executed is /etc/rc.sysinit. This is denoted by
+the 'sysinit' tag (e.g. si::sysinit:/etc/rc.sysinit). Then init enters runlevel
+2 and executes the script defined for runlevel 2. From this example, this would
+be /etc/init.d/runlvl2.startup (e.g. 12:2:wait:/etc/init.d/runlvl2.startup). 
+Because of the 'wait' tag, init waits until the script completes before
+continuing. When the runlevel 2 script completes, init spawns a shell on the
+console (through the /bin/sh symbolic link) (e.g. con:2:respawn:/bin/sh). The
+respawn keyword instructs init to restart the shell each time it detects that
+it has exited.
