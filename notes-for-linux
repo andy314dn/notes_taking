@@ -601,3 +601,576 @@ continuing. When the runlevel 2 script completes, init spawns a shell on the
 console (through the /bin/sh symbolic link) (e.g. con:2:respawn:/bin/sh). The
 respawn keyword instructs init to restart the shell each time it detects that
 it has exited.
+
+6.4 Initial RAM Disk
+The Linux kernel contains two mechanisms to mount an early root FS to perform
+certain startup-related system initialization and configuration.
++ legacy method: the initial ramdisk or initrd
++ newer method:  initramfs
+
+The legacy method for enabling early user space processing is known as the 
+initial RAM disk, or simply 'initrd'.  Support for this functionality must be
+compiled into the kernel. 
+
+The initial RAM disk is a small, self-contained root FS that usually contains
+directives to load specific device drivers before the completion of the boot
+cycle. An 'initrd' is frequently used to load a device driver that is required
+in order to access the real boot FS.
+
+booting with 'initrd'
+To use the initrd functionality, the bootloader gets involved on most archs to
+pass the initrd image to the kernel.  A common scenario is that the bootloader
+loads a compressed kernel image into memory and the loads an 'initrd' image
+into another section of available memory. In doing so, it becomes the
+bootloader's responsibility to pass the load address of the 'initrd' image to
+the kernel before passing control to it. The kernel must know where the initrd
+image is located so it can load it.
+Some architectures and platforms construct a single composite binary image.
+This scheme is used when the bootloader does not have specific Linux support
+for loading 'initrd' images. In this case, the kernel and 'initrd' image are
+simply concatenated into a single composite image. You will find reference to
+this type of composite image in the kernel makefiles as 'bootpImage'.
+So how does the kernel know where to find the 'initrd' image? We simply pass
+the 'initrd' image start address and size to the kernel via the kernel command
+line, e.g.
+	console=ttyS0,115200 root=/dev/nfs			\
+	  nfsroot=192.168.1.9:/home/chris/sandbox/omap-targe	\
+	  initrd=0x10800000,0x14af47
+This kernel command line defines the following kernel behavior:
+	+ specify a single console on device ttyS0 at 115 kilobaud
+	+ mount a root FS via NFS, the network FS
+	+ find the NFS root FS on host 192.168.1.9 (from the directory
+	  /home/chris/sandbox/omap-target)
+	+ load and mount an initial ramdisk from physical memory location
+	  0x10800000, which has a size of 0x14AF47 bytes (compressed)
+
+bootloader support for initrd
+The U-Boot bootloader was designed with support for directly booting the Linux
+kernel. Using U-Boot, it is easy to include an 'initrd' image with the kernel
+image. Here is the typical boot sequence containing an initial ramdisk image:
+	tftp 0x10000000 kernel-uImage
+	tftp 0x10800000 initrd-uboot
+	bootm 0x10000000 0x10800040
+The 'tftp' command causes U-Boot to download the kernel image from a TFTP 
+server. The kernel image is downloaded and placed into the base of this target
+system's memory at the 256MB (0x10000000). Then a second image, the initial
+ramdisk image, is downloaded from a TFTP server into memory at a higher mem
+address (256MB + 8MB in this example). Finally, we issue the U-Boot 'bootm'
+command, which is the 'boot from memory' command. The bootm command takes 2
+arguments: the address of the Linux kernel image, optionally followed by an 
+address representing the location of the initial ramdisk image.
+Special note of one feature of the U-Boot bootloader: it fully supports loading
+kernel and ramdisk images over an Ethernet connection. You can get a kernel &
+ramdisk image onto your board in other ways as well. You can flash them into 
+your Flash memory using a HW-based Flash programming tool, or you can use a 
+serial port and download the kernel and FS images via RS-232.
+
+'initrd' magic: 'linuxrc'
+When the kernel boots, first it detects the presence of the 'initrd' image. 
+Then it copies the compressed binary file from the specified physical location
+in RAM into a proper kernel ramdisk and mounts it as the root FS. The magic of
+'initrd' comes from the contents of a special file within the 'initrd' image.
+When the kernel mounts the intial ramdisk, it looks for a specific file called
+'linuxrc'. It treats this file as a script file and proceeds to execute the
+commands contained therein. This mechanism enables the system designer to 
+specify the behavior of 'initrd'. Here is a sample 'linuxrc' file:
+
+#!/bin/sh
+
+echo 'Greetings: this is 'linuxrc' from Initial Ramdisk'
+echo 'Mounting /proc filesystem'
+mount -t proc /proc /proc
+
+busybox sh
+
+In practice, this file would contain directives required before we mount the
+real root FS. One example might be to load CompactFlash drivers to obtain a 
+real root FS from a CompactFlash device. For the purposes of this example, we
+simply spawn a 'busybox' shell and halt the boot process for examination. If
+you were to type the 'exit' command here, the kernel would continue its boot
+process until complete.
+After the kernel copies the ramdisk from physical memory into a kernel ramdisk,
+it returns this physical memory to the available memory pool. You can think of
+this as transferring the 'initrd' image from physical memory at the hard-coded
+address into the kernel's own virtual memory (in the form of a kernel ramdisk
+device).
+
+the 'initrd' plumbing
+As part of the Linux boot process, the kernel must locate and mount a root FS.
+Late in the boot process, the kernel decides what and where to mount in a 
+function called prepare_namespace(), which is found in .../init/do_mounts.c. If
+'initrd' support is enabled in the kernel and the kernel command line is so
+configured, the kernel decompresses the compressed 'initrd' image from physical
+memory and eventually copies the contents of this file into a ramdisk device
+(/dev/ram). At this point, we have a proper file system on a kernel ramdisk.
+After the file system has been read into the ramdisk, the kernel effectively
+mounts this ramdisk device as its root file system. Finally, the kernel spawns
+a kernel thread to execute the 'linuxrc' file on the 'initrd' image.
+
+When the 'linuxrc' script has completed execution, the kernel unmounts the 
+initrd and proceeds with the final stages of system boot. If the real root dev
+has a directory called /initrd, Linux mounts the 'initrd' file system on this
+path (a mount point). If this directory does not exist in the final root FS, 
+the 'initrd' image is simply discarded.
+
+If the kernel command line contains a 'root=' parameter specifying a ramdisk
+(e.g. root=/dev/ram0), the previously described 'initrd' behavior changes in
+2 important ways.
+	+ First, the processing of the 'linuxrc' executable is skipped.
+	+ Second, no attempt is made to mount another file system as root. This
+	  means that you can have a Linux system with initrd as the only rootFS
+
+6.5 Using 'initramfs'
+'initramfs' is the preferred mechanism for executing early user space programs.
+It is enabled using the same configuration selections as shown in Fig 6-1. Its
+purpose is also similar: to enable loading of drivers that might be required
+before mounting the read (final) root file system.
+
+The technical implementation details differ significantly between 'initrd' and
+'initramfs', e.g. initramfs is loaded before the call to do_basic_setup() (
+do_basic_setup() is called from .../init/main.c and calls do_initcalls(). This
+causes driver module initialization routines to be called), which provides a 
+mechanism for loading firmware for devices before its driver has been loaded.
+
+initramfs is much easier to use. initramfs is a cpio archive, whereas initrd is
+a gzipped file system image. This simple difference contributes to the ease of
+use of initramfs and removes the requirement that you must be root to create it.
+It is integrated into the Linux kernel source tree, and a small default (nearly
+empty) image is built automatically when you build the kernel image. Make
+changes to it is far easier than building and loading a new initrd image.
+
+.../usr directory is where the 'initramfs' image is built
+A build script in .../scripts called gen_initramfs_list.sh defines a default
+list of files that will be included in the 'initramfs' archive, e.g.
+	dir	/dev 0755 0 0
+	nod	/dev/console 0600 0 0 c 5 1
+	dir 	/root 0700 0 0
+This produces a small default directory structure containing the /root and /dev
+top-level directories, as well as a single device node representing the console
+The details of HOW-TO specify items for 'initramfs' FS are described in the
+kernel doc at .../Documentation/filesystem/ramfs-rootfs-initramfs.txt
+The first line produces a directory entry (dir) called /dev, with 0755 file
+permissions and a user-id and group-id of 0 (root).
+The second line defines a device node (nod) called /dev/console, with file
+permissions of 0600, user and group IDs of 0 (root), being a character dev (c),
+with major number 5 and minor number 1.
+The third line creates another directory called /root similar to the /dev 
+specifier.
+
+customizing 'initramfs'
+There are 2 ways to customize the 'initramfs': 
+	+ either create a cpio archive w/ your required files
+	+ specify a list of directories and files whose contents are merged 
+	  with the default created by gen_initramfs_list.sh
+You specify a source for your 'initramfs' files via the kernel-configuration
+facility. Enable INITRAMFS_SOURCE in your kernel configuration, and point it to
+a location on your development workstation. The kernel build system will use
+those files as the source for your 'initramfs' image.
+
+First, we will build a file collection containing the files we want for a 
+minimal system. Because 'initramfs' is supposed to be small and lean, we'll 
+build it around a statically compiled 'busybox'. Compiling busybox statically
+means it is not dependent on any system libraries. We need very little beyond
+busybox: a device node for the console in directory called /dev and a symlink
+pointing back to busybox called init. Finally, we'll include a busybox startup
+script to spawn a shell for us to interact with after booting into this 
+initramfs (suppose they are in /usr/myinitramfs_root/)
+
+When we point the kernel configuration parameter INITRAMFS_SOURCE to the dir
+where this file structure lives, it automatically builds the 'initramfs'
+compressed cpio archive and links it into the kernel image.
+
+The reason for the 'init' symlink should be noted. When the kernel is 
+configured for 'initramfs', it searches for an executable file called /init on
+the root of the 'initramfs' image. If it finds it, it executes it as the 'init'
+process with PID (process ID) set to 1. If it does not find it, it skips
+'initramfs' and proceeds with normal root FS processing. This logic is found in
+.../init/main.c. A character pointer called ramdisk_executable_command contains
+a pointer to this initialization command. By default it is set to the string
+"/init"
+
+A kernel command-line parameter called 'rdinit=', when set, overrides this init
+specifier much the same way that 'init=' does. To use it, simply add it to
+your kernel cmd line. For example, we could have set 'rdinit=/bin/sh' on our
+kernel cmd-line to directly call the busybox shell aplet.
+
+
+7.1 Role of a Bootloader
+When power is first applied to a processor board, many elements of HW must be
+initialized before even the simplest program can run.  Each architecture and 
+processor has a set of predefined actions and configurations upon release of 
+reset, which includes fetching initialization code from an onboard storage dev
+(usually Flash memory).  This early initialization code is part of the
+bootloader and is responsible for breathing life into the processor and related
+HW components.
+
+Most processors have a default address from which the first bytes of code are
+fetched upon application of power and release of reset. HW designers use this
+info to arrange the layout of Flash memory on the board and to select which 
+address range(s) the Flash memory responds to. This way, when power is first
+applied, code is fetched from a well-known and predictable address, and SW
+control can be established.
+
+The bootloader provides this early initialization code and is responsible for
+initializing the board so that other programs can run.  This early 
+initialization code is almost always written in the processor's native asm.
+
+After the bootloader has performed the basic processor and platform 
+initialization, its primary role is to fetch and to boot a full-blown OS. It is
+responsible for locating, loading, and passing control to the primary OS. In
+addition, the bootloader might have advanced features, such as the capability
+to validate an OS image, upgrade itself or an OS image, or choose from among
+several OS images based on a developer-defined policy. When the OS takes 
+control, the bootloader is overwritten and ceases to exist.
+
+7.4.7 U-Boot Image Format
+We need to understand the image format that U-Boot requires. U-Boot expects a
+small header on the image file that identifies several attributes of the image.
+U-Boot provides the 'mkimage' tool (part of the U-Boot source code) to build
+this image header.
+
+Recent Linux kernel distro have built-in support for building images directly
+bootable by U-Boot. Both the ARM and POWERPC branches of the kernel source tree
+support a target called 'uImage'.
+
+Browsing thru the makefile .../arch/powerpc/boot/Makefile, we see the uImage
+target defining a call to an external wrapper script called 'wrapper'. The
+wrapper script sets up some default variable values and eventually calls
+'mkimage'.
+
+The 'mkimage' utility creates the U-Boot header and prepends it to the supplied
+kernel image.  It writes the resulting image to the final parameter passed
+to 'mkimage' the value of the $ofile variable called 'uImage'
+
+Several U-Boot commands use this header data both to verify the integrity of
+the image (U-Boot also puts a CRC signature in the header) and to identify
+the image type. U-Boot has a command called 'iminfo' that reads the image 
+header and displays the image attributes from the target image.
+
+7.5 Device Tree Blob (Flat Device Tree)
+Different names of Device Tree Blob: flat device tree, device tree binary, or 
+device tree.  
+
+The DTB is a database that represents the HW components on a given board.  It 
+has been chosen as the default mechanism to pass low-level HW info from the 
+bootloader to the kernel.
+
+Where does the DTB come from?
+	+ It is provided as a courtesy by the board/architecture developers as
+	  part of the Linux kernel source tree
+	+ You must provide a DTB for your custom board
+
+Device Tree Source:
+the Device Tree Blob is "compiled" by a special compiler that produces the bin
+in the proper form for U-Boot and Linux to understand.
+It means: DTS --> Device Tree Compiler --> DTB
+
+Device Tree Compiler:
+the Device Tree Compiler (DTC) converts the human-readable device tree source
+into the machine-readable binary that both U-Boot and the Linux kernel can
+understand.
+DTC can go in both directions: from DTS to DTB and vice versa.
+
+Alternative Kernel Images using DTB
+In many build targets available from make ARCH=<arch> help, several 
+architecture-specific targets combine the DTB with the kernel image.
+
+One good reason to do this is if you are trying to boot a newer kernel on a 
+target that has an older version of U-Boot that does not suport the DTB.
+
+
+8.1 Device Driver Concepts
+One of the fundamental purposes of a device driver is to isolate the user
+programs from ready access to critical kernel data structures and HW devices.
+A well-written  device driver hides from the user the complexity and 
+variability of the HW device
+
+Loadable modules
+Linux lets you add and remove kernel components at runtime.
+Linux is structured as a monolithic kernel with a well-defined interface for
+adding and removing device driver modules dynamically after boot time.
+
+
+9.1 Linux File System Concepts
+character devices: store and retrieve data in serial streams
+block devices: store and retrieve data in equal-sized chunks of data at a time,
+in random locations on an addressable medium.
+
+partition: the logical division of a physical device on which a FS exists.
+	When a partition is formatted with a given file system type, Linux can
+	mount the corresponding FS from that partition.
+
+inode: the fundamental data structure representing a single file.
+
+Mounting a FS
+After a FS has been created, we can mount it on a running Linux system. The 
+kernel must be compiled with support for our particular FS type, either as a
+compiled-in module or as a dynamically loadable module.
+
+The following command mounts an ext2 FS on a mount point that we specify:
+$ mount /dev/sdb1 /mnt/flash
+This assumes that we have a directory created on our target Linux machine 
+(the board) called /mnt/flash.  This is called the 'mount point' because we are
+installing (mounting) the FS rooted at this point in our FS hierarchy. We are
+mounting the Flash device that was assigned to the device /dev/sdb1.
+
+mount point: any directory path on the FS that you decide, which becomes the 
+top level (root) of your newly mounted device
+
+'mount' can determine the type of file system on a properly formatted FS known
+to the kernel
+
+9.8 Network File System (NFS)
+NFS enables you to export a directory on a NFS server and mount that directory
+on a remote client machine as if it were a local file system.
+
+Using NFS on your target board, en embedded developer can have access to a 
+huge number of files, libraries, tools, and utilities during development and
+debugging, even if the target embedded system is resource-constrained.
+
+Your kernel must be configured with NFS support, for both the server-side
+functionality and the client side.  NFS server and client functionality is
+independently configured in the kernel configurations.
+
+On your development workstation with NFS enabled, a configuration file contains
+a list specifying each directory that you want to export via the NFS. That is
+/etc/exports.
+
+On an ES with NFS enabled, the following command mounts the .../workspace dir
+exported by the NFS server on a mount point of our choice:
+	$ mount -t nfs pluto:/home/chris/workspace /workspace
+We are instructing the 'mount' command to mount a remote directory (on a 
+machine named 'pluto', our development workstation) onto a local mount point
+called /workspace.  For the command semantics to work, two requirements must
+be met on the embedded target.
+	1/ for the target to recognize the symbolic machine name pluto, it 
+	   must be able to resolve the symbolic name.  To do so, just place an
+	   entry in the /etc/hosts file on the target.  This allows the 
+	   networking subsystem to resolve the symbolic name to its
+	   corresponding IP address, e.g. an entry in the target's /etc/hosts
+	   file would look like this:
+	   	192.168.11.9	pluto
+	2/ the embedded target must have a directory in its root directory
+	   called /workspace. This is called a mount point.  The requirement
+	   is that the target must have a directory created with the same name
+	   as given on the 'mount' command
+The mount command above causes the contents of the NFS server's 
+/home/chris/workspace directory to be available on the embedded system's
+/workspace path
+
+This is useful, especially in a cross-development environment.  Each time you
+make changes to the project, you need to move that application to your target
+so that you can test and debug it.  Using NFS in this manner, assuming that you
+are working in the NFS exported directory on you host, the changes are
+immediately available on your target embedded system without the need to upload
+the newly compiled project files.
+
+Root File System on NFS
+Mounting your project workspace on your target embedded system is very useful
+for development and debugging because it facilitates rapid access to changes
+and source code for source-level debugging.
+
+NFS really shines as a development tool when you mount your embedded system's
+root file system entirely from an NFS server.
+
+The leading embedded Linux distros targetted at embedded systems ship tens of
+thousands of files compiled and tested for the chosen target architecture.
+The target file system contains just shy of a gigabyte worth of binary files
+targeted at the ARM architecture.  Therefore, this would hardly fit on the 
+average Flash device found on an ES.
+==> This is the power of an NFS root mount.  For development purposes, it can
+only increases productivity if your ES is loaded with all the tools and 
+utilities you are familiar with on a Linux workstation.  Indeed, likely dozens
+of command-line tools and development utilities that you have never seen can
+help you shave time off your development schedule.
+
+Configuring your ES to mount its root FS via NFS at boot time is relatively
+straightforward.
+	+ configure your target's kernel for NFS support. There is also a 
+	  configuration option to enable root mounting of an NFS remote
+	  directory. Then what remains is to somehow feed info to the kernel
+	  so that it knows where to look for the NFS server. At a minimum,
+	  the kernel can be passed the proper parameters on the kernel command
+	  line to configure its IP port and server info on power-up.
+	    console=ttyS0,115200 ip=bootp root=/dev/nfs
+	  This tells the kernel to expect a root FS via NFS and to obtain the
+	  relevant parameters (server name, server IP address, and root dir
+	  to mount) from a BOOTP server.
+
+	  If you are statically configuring your target's IP address, your
+	  kernel command line might look like this:
+	    console=ttyS0,115200	\
+	    ip=192.168.11.139:192.168.11.1:255.255.255.0:coyote1:eth0:off \
+	    nfsroot=192.168.11.1:/coyote-target	\
+	    root=/dev/nfs
+	  parameters can be found in .../Documentation/filesystem/nfsroot.txt
+
+9.9 Pseudo File Systems
+A number of file systems fall under the category of Pseudo File Systems in
+the kernel configuration menu. Together they provide a range of facilities
+useful in a wide range of applications.
+
+/proc File System
+the /proc FS takes its name from its original purpose: an interface that allows
+the kernel to communicate info about each running process on a Linux system.
+
+the /proc file system has become a virtual necessity for all but the simplest
+of Linux systems, even embedded ones. Many user-level functions rely on the
+contents of the /proc FS to do their job.
+
+sysfs
+sysfs is not representative of an actual physical device. Instead, sysfs models
+specific kernel objects sush as physical devices and provides a way to associate
+devices with device drivers.
+
+sysfs provides a top-level subdirectory for several system elements, including
+the system buses
+
+
+10.1 MTD (Memory Technology Device) Overview
+MTD is a device driver layer that provides a uniform API for intefacing with
+raw Flash devices.
+
+Contrary to popular belief, SD/MMC cards, CompactFlash cards, USB Flash drivers,
+an other popular devices are not MTD devices.  MTD is unique in Linux driver
+architecture. This is because MTD drivers must perform Flash-specific operations
+such as the 'erase block' and 'wear leveling' operations, which have no parallel
+in traditional block drivers.
+
+
+12.1 Cross-Development Environment
+host: the development workstation that is sitting on your desktop and running
+	your favorite Linux desktop distro.
+target: your embedded hardware platform.
+native development: denotes the compilation and building of applicaitons on &
+	for your host system
+cross-development: denotes the compilation and building of applications on the
+	host system that will be run on the embedded system
+
+The host system provides the horsepower to run the compilers, debuggers,
+	editors, and other utilities, and the target executes only the apps
+	designed for it.
+
+"Hello World" Embedded
+a properly configured cross-development system hides a great deal of complexity
+from the average application developer.
+
+What if we want to build hello.c for a different architecture?
+	When we compile an applicaiton program for a target using a 
+	cross-compiler on our host machine, we must make sure that the compiler
+	does not use the default host include directories or library paths.
+	Using a properly configured cross-compiler is the 1st step.
+	Having a well-designed cross-development environment is the 2nd.
+
+12.2 Host System Requirements
+First, you need a properly configured cross toolchain.
+The next major item you need is a Linux distro targeted for your embedded
+	system architecture. This includes hundreds to potentially thousands
+	of files that will populate your ES' file system
+
+In summary, your development host requires four separate and distinct 
+capabilities:
+	1. cross toolchain and libraries
+	2. target system packages, including programs, utilities, and libraries
+	3. host tools such as editors, debuggers, and utilities
+	4. servers for hosting your target board
+
+12.3 Hosting Target Boards
+Having an Ethernet connection available on your target board enables the NFS
+root mount configuration.
+
+Many embedded development systems and bootloaders support TFTP and assume that
+	developer will use it. TFTP is a lightweight protocol for moving files
+	between a TFTP server and TFTP client over Ethernet.
+
+Using TFTP from your bootloader to load the kernel will save you countless
+	hours waiting for serial downloads
+
+TFTP server
+TFTP is a TCP/IP service that must be enabled on your workstation.  To enable
+	the TFTP service, you must instruct your workstation to respond to 
+	incoming TFTP packets. The easiest way to do this is to run a TFTP 
+	server daemon.
+
+Configuring this TFTP server is easy. There is a single configuration file
+	called /etc/default/tftpd-hpa. This file needs to be customized to
+	your particular requirements. (Listing 12-4, page 313)
+
+BOOTP/DHCP Server
+Having a DHCP server on your development host simplifies the configuration
+	management for your embedded target.  When Linux boots on your target
+	board, it needs to configure the Ethernet interface before the i/f
+	becomes useful.  Moreover, if you are using an NFS root mount
+	configuration on your target board, Linux needs to configure your
+	target's Ethernet interface before the boot process can complete.
+
+In general, Linux can use 2 methods to initialize its Ethernet/IP i/f during
+boot:
+	+ hard-code the Ethernet interface parameters either on the Linux 
+	  kernel command line or in the default configuration, such as a static
+	  IP configuration
+	+ configure the kernel to automatically detect the network settings
+	  at boot time ==> more flexible
+	DHCP or BOOTP is the protocol your target and server use to accomplish
+	the automatic detection of network settings.
+
+A DHCP server controls the IP address assignments for IP subnets for which it
+has been configured, and for DHCP or BOOTP clients that have been configured to
+participate. A DHCP server listens for requests from a DHCP clients (e.g. your
+target board) and assigns addresses and other pertinent info to the client as 
+part of the boot process.
+
+You must first enable the DHCP server on your Linux development workstation by:
+$ /etc/init.d/dhcpd start
+or
+$ /etc/init.d/dhcpd restart
+	dhcpd is considered a system 'service'
+
+NFS Server
+Using an NFS root mount for your target board is a very powerful development
+	tool.  Here are some of the advantages of this configuration for 
+	development:
+	  + Your root file system is not size-restricted by your board's own
+	    limited resources such as Flash memory
+	  + Changes made to your application files during development are
+	    immediately available to your target system
+	  + You can debug and boot your kernel before developing and debugging
+	    your root file system
+The NFS service must be started from either your startup scripts, a graphical
+	menu, or the command line, e.g.
+		$ /etc/init.d/nfs start
+		$ /etc/init.d/nfs restart
+
+In addition to enabling the service, your kernel must be compiled with support
+	for NFS.  Although DHCP and TFTP are both user space utilities, NFS
+	requires kernel support.  This is true on both our development
+	workstation and your target board.  Figure 12-2 shows the configuration
+	options for NFS in the kernel.  Notice that there are config options
+	for both NFS server and client support.  Note also the option
+	"Root File System on NFS".  Your target kernel must have this option
+	configured for NFS root mount operation
+
+The NFS server gets its instructions from an export file located on your
+	development workstation.  It is commonly found in /etc/exports.
+	Entries in this file allow a client to remotely mount any of those.
+
+You can test your NFS configuration right from your workstation.  Assuming that
+	you have NFS services enabled (which requires that both the NFS server 
+	and client components are enabled), you can mount a local NFS export
+	as you would mount any other file system:
+	$ mount -t nfs localhost:/home/chris/workspace /mnt/remote
+If this command succeeds and the files in .../workspace are available on 
+	/mnt/remote, your NFS server configuration is working
+
+Target NFS Root mount
+A set of details must be correct before it will work.
+	1. configure your NFS server, and export a proper target FS for your
+	   architecture
+	2. configure your target kernel with NFS client services and root FS
+	   on NFS
+	3. enable kernel-level autoconfiguration of your target's Ethernet i/f
+	4. provide your target Ethernet IP configuration using the kernel cmd
+	   line or static kernel configuration option
+	5. provide a kernel command line enabled for NFS
+
+
