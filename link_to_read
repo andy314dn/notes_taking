@@ -10,8 +10,6 @@ http://www.tutorialspoint.com/c_standard_library/
 https://en.wikibooks.org/wiki/A_Little_C_Primer/
 http://mrbook.org/blog/tutorials/make/
 
-https://launchpad.net/gcc-arm-embedded/+download
-
 2016-03-02 strip command
 http://www.thegeekstuff.com/2012/09/strip-command-examples/
 http://www.thegeekstuff.com/2012/03/reverse-engineering-tools/
@@ -44,3 +42,5 @@ sach tu hoc: he-dieu-hanh-1.1.pdf va cac slide lien quan
 The Linux Kernel Module Programming Guide:
 + http://www.tldp.org/LDP/lkmpg/2.6/html/lkmpg.html
 
+2016-03-24: toi nay ve xem automake wiki, xem slide, tap build, lay file
+	anh Luong build thu
