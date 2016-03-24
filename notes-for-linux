@@ -1173,4 +1173,48 @@ A set of details must be correct before it will work.
 	   line or static kernel configuration option
 	5. provide a kernel command line enabled for NFS
 
+In Figure 12-2, we explained the NFS server configuration.
+Now you must make sure that your target kernel configuration has NFS client
+	services enabled, and, in particular, you must enable the option for 
+	Root file system on NFS. Specifically, make sure that your kernel has
+	CONFIG_NFS_FS=y and CONFIG_ROOT_NFS=y. Obviously, you cannot configure
+	NFS as loadable modules if you inted to boot via NFS root mount.
+Kernel-level configuration is a TCP/IP configuration option found under the
+	Network tab in the kernel configuration utility.  Enable CONFIG_IP_PNP 
+	on your target kernel. When this is selected, you are presented with
+	several options for automatic configuration.  Select either BOOTP or
+	DHCP (Figure 12-3)
+
+When your server and target kernel are configured, you need to provide your
+	target Ethernet configuration.  If your bootloader supports a kernel
+	command line, that is the easiest method.  Here is what a kernel cmd-
+	line to support NFS root mount might look like:
+		console=ttyS0,115200 root=/dev/nfs rw ip=dhcp \
+		   nfsroot=192.168.1.9:/home/chris/sandbox/pdna-target
+
+U-Boot NFS Root Mount example
+U-Boot is a good example of a bootloader that supports a configurable kernel
+	command line.  Using U-Boot's nonvolatile environment feature, we can
+	store our kernel command line in a parameter specially named for this 
+	purpose.  To enable the NFS command line in U-Boot, we do as follows:
+		setenv bootargs console=ttyS0,115200 root=/dev/nfs rw \
+		   ip=dhcp nfsroot=192.168.1.9:/home/chris/sandbox/pdna-target
+Then we load a kernel using our TFTP server.
+	$ tftpboot 200000 uImage-pdna  <<< Entered at U-Boot prompt
+When the kernel has completed the IP autoconfiguration, it can mount the root
+	file system using the supplied parameters.  You can see this from the
+	three lines ending with the VFS (Virtual File System) message
+	announcing that it has mounted the NFS root file system.  After the NFS
+	root file system has been mounted, initialization completes.
+
+It is also possible to pass target IP settings to the kernel in a static
+	fashion instead of having the kernel obtain IP settings from a DHCP
+	or BOOTP server.  IP settings can be passed using the kernel command
+	line directly.  The kernel command line in this case would look like
+	this:
+		console=ttyS0,115200 \
+		   ip=192.168.1.68:192.168.1.9::255.255.255.0:pdna:eth0:off \
+		   root=/dev/nfs rw nfsroot=192.168.1.9:/home/chris/pdna-target
+
+
 
