@@ -1,0 +1,14 @@
+/proc fs: an interface that allows the kernel to communicate info about each
+	running process on a Linux system
+
+sysfs is not representative of an actual physical device.  Instead, sysfs
+	models specific kernel objects such as physical devices and provides
+	a way to associate devices with device drivers.
+We can get some idea of what kinds of objects are exported by looking directly
+	at the directory structure exported by sysfs.
+sysfs provides a top-level subdirectory for several system elements, including
+	the system buses.
+
+loop-back device: a pseudo-device that makes a 'file' accessible as a
+	'block device'
+
