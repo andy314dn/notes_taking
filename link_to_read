@@ -21,7 +21,6 @@ find DEFinition: http://www.pcmag.com/encyclopedia/
 
 set tags in vim:
 http://stackoverflow.com/questions/563616/vim-and-ctags-tips-and-tricks
-auto completion: Ctrl + N
 
 Linux device driver tutorials:
 1/ http://opensourceforu.efytimes.com/author/anil-kumar-pugalia/page/3/
@@ -44,5 +43,3 @@ The Linux Kernel Module Programming Guide:
 
 2016-03-24: toi nay ve xem automake wiki, xem slide, tap build, lay file
 	anh Luong build thu
-	INSTALL: kernel-devel
-	send 373 materials to work

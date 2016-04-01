@@ -12,3 +12,6 @@ sysfs provides a top-level subdirectory for several system elements, including
 loop-back device: a pseudo-device that makes a 'file' accessible as a
 	'block device'
 
+'hyperthreaded' processors: chips that implement multiple, virtual CPUs sharing
+	a single processor core and cache.
+
