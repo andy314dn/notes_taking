@@ -1,0 +1,164 @@
+#! /bin/sh
+
+### create workspace
+export SRCDIR=~/workbench/gcc-g++-4.8.2/xtools/src
+mkdir -pv ~/workbench/gcc-g++-4.8.2/xtools
+mkdir $SRCDIR
+cd $SRCDIR
+
+### gather the sources
+#binutils
+wget http://ftp.gnu.org/gnu/binutils/binutils-2.23.2.tar.bz2
+tar -pxjf binutils-2.23.2.tar.bz2
+#glibc
+wget http://ftp.gnu.org/gnu/glibc/glibc-2.18.tar.gz
+tar -pxzf glibc-2.18.tar.gz
+#gcc
+wget http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2 
+wget http://ftp.gnu.org/gnu/gmp/gmp-4.3.2.tar.bz2 
+wget http://ftp.gnu.org/gnu/mpfr/mpfr-2.4.2.tar.bz2 
+wget ftp://gcc.gnu.org/pub/gcc/infrastructure/mpc-0.8.1.tar.gz 
+tar -pxjf gcc-4.8.2.tar.bz2
+cd gcc-4.8.2/
+tar -pxjf ../gmp-4.3.2.tar.bz2
+tar -pxjf ../mpfr-2.4.2.tar.bz2
+tar -pxzf ../mpc-0.8.1.tar.gz
+mv gmp-4.3.2/ gmp
+mv mpfr-2.4.2/ mpfr
+mv mpc-0.8.1/ mpc
+cd $SRCDIR
+#kernel
+wget http://www.kernel.org/pub/linux/kernel/v2.6/linux-2.6.38.tar.bz2
+tar -pxjf linux-2.6.38.tar.bz2
+
+### build environment
+export BINUTILS_SRC=$SRCDIR/binutils-2.23.2
+export KERNEL_SRC=$SRCDIR/linux-2.6.38
+export GCC_SRC=$SRCDIR/gcc-4.8.2
+export GLIBC_SRC=$SRCDIR/glibc-2.18
+export BUILDDIR=~/workbench/gcc-g++-4.8.2/xtools/build
+export TARGETMACH=arm-none-linux-gnueabi
+export BUILDMACH=i686-pc-linux-gnu
+export INSTALLDIR=~/workbench/gcc-g++-4.8.2/arm
+export SYSROOTDIR=$INSTALLDIR/sysroot
+
+### build binutils
+mkdir $BUILDDIR
+mkdir $BUILDDIR/binutils
+cd $BUILDDIR/binutils
+$BINUTILS_SRC/configure --disable-werror --build=$BUILDMACH --target=$TARGETMACH --prefix=$INSTALLDIR --with-sysroot=$SYSROOTDIR
+make MAKEINFO=true
+make install MAKEINFO=true
+
+### kernel headers
+cd $KERNEL_SRC
+make mrproper
+make ARCH=arm omap2plus_defconfig
+mkdir -pv $INSTALLDIR/sysroot/usr
+make ARCH=arm headers_check
+make ARCH=arm INSTALL_HDR_PATH=$INSTALLDIR/sysroot/usr headers_install
+cd $SRCDIR
+
+### bootstrap gcc
+mkdir $BUILDDIR/bootstrap-gcc
+cd $BUILDDIR/bootstrap-gcc
+$GCC_SRC/configure --build=$BUILDMACH --host=$BUILDMACH --target=$TARGETMACH --prefix=$INSTALLDIR --without-headers --enable-boostrap --enable-languages="c" --disable-threads --enable-__cxa_atexit --disable-libmudflap --with-gnu-ld --with-gnu-as --disable-libssp --disable-libgomp --disable-nls --disable-shared
+make all-gcc install-gcc #MAKEINFO=true
+make all-target-libgcc install-target-libgcc #MAKEINFO=true
+ln -s $INSTALLDIR/lib/gcc/arm-none-linux-gnueabi/4.8.2/libgcc.a $INSTALLDIR/lib/gcc/arm-none-linux-gnueabi/4.8.2/libgcc_sh.a
+
+### glibc headers
+mkdir -pv $BUILDDIR/libc
+cd $BUILDDIR/libc
+echo "libc_cv_forced_unwind=yes" > config.cache
+echo "libc_cv_c_cleanup=yes" >> config.cache
+export PATH=$INSTALLDIR/bin:$PATH
+export CROSS=arm-none-linux-gnueabi
+export CC=${CROSS}-gcc
+export LD=${CROSS}-ld
+export AS=${CROSS}-as
+$GLIBC_SRC/configure --build=$BUILDMACH --host=$TARGETMACH --prefix=$SYSROOTDIR/usr --with-headers=$SYSROOTDIR/usr/include --config-cache --enable-kernel=2.6.0
+make -k install-headers cross_compiling=yes install_root=$SYSROOTDIR #MAKEINFO=true
+
+pushd $INSTALLDIR/sysroot/usr/inlude
+cp -rv * $SYSROOTDIR/usr/include/
+popd
+
+ln -s $INSTALLDIR/lib/gcc/arm-none-linux-gnueabi/4.8.2/libgcc.a $INSTALLDIR/lib/gcc/arm-none-linux-gnueabi/4.8.2/libgcc_eh.a
+cd $SRCDIR
+
+### build glibc
+rm -rf $BUILDDIR/libc
+mkdir -pv $BUILDDIR/libc
+cd $BUILDDIR/libc
+echo "libc_cv_forced_unwind=yes" > config.cache
+echo "libc_cv_c_cleanup=yes" >> config.cache
+
+echo $PATH # /home/phuocnd/workbench/gcc-g++-4.8.2/arm/bin:/home/phuocnd/workbench/gcc-g++-4.8.2/arm/bin:/usr/lib64/qt-3.3/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/home/phuocnd/bin/cbrowser-0.8:/home/phuocnd/.local/bin:/home/phuocnd/bin:/home/phuocnd/bin/cbrowser-0.8
+echo $CROSS # arm-none-linux-gnueabi
+echo $CC # arm-none-linux-gnueabi-gcc
+
+$GLIBC_SRC/configure --build=$BUILDMACH --host=$TARGETMACH --prefix=/usr --with-headers=$SYSROOTDIR/usr/include --config-cache --enable-kernel=2.6.0
+make -k install-headers cross_compiling=yes install_root=$SYSROOTDIR MAKEINFO=true
+ln -s $INSTALLDIR/lib/gcc/arm-none-linux-gnueabi/4.8.2/libgcc.a $INSTALLDIR/lib/gcc/arm-none-linux-gnueabi/4.8.2/libgcc_s.a
+make MAKEINFO=true
+make install_root=$SYSROOTDIR install MAKEINFO=true
+
+### build the next gcc
+unset CC
+unset LD
+unset AS
+
+cd $SRCDIR
+rm -rf gcc-4.8.2
+tar -pxjf gcc-4.8.2.tar.bz2
+cd gcc-4.8.2/
+tar -pxjf ../gmp-4.3.2.tar.bz2
+tar -pxjf ../mpfr-2.4.2.tar.bz2
+tar -pxzf ../mpc-0.8.1.tar.gz
+mv gmp-4.3.2/ gmp
+mv mpfr-2.4.2/ mpfr
+mv mpc-0.8.1/ mpc
+mkdir -pv $BUILDDIR/final-gcc
+cd $BUILDDIR/final-gcc
+echo "libc_cv_forced_unwind=yes" > config.cache
+echo "libc_cv_c_cleanup=yes" >> config.cache
+BUILD_CC=gcc
+$GCC_SRC/configure --build=$BUILDMACH --target=$TARGETMACH --prefix=$INSTALLDIR --with-sysroot=$SYSROOTDIR --enable-languages="c,c++" --with-gnu-as --with-gnu-ld --disable-multilib --with-float=soft --disable-sjlj-exceptions --disable-nls --enable-threads=posix --enable-long-longx
+make all-gcc #MAKEINFO=true
+make install-gcc #MAKEINFO=true
+
+### build the final gcc
+echo $CC
+echo $LD
+echo $AS
+
+cd $SRCDIR
+rm -rf gcc-4.8.2
+tar -pxjf gcc-4.8.2.tar.bz2
+cd gcc-4.8.2/
+tar -pxjf ../gmp-4.3.2.tar.bz2
+tar -pxjf ../mpfr-2.4.2.tar.bz2
+tar -pxzf ../mpc-0.8.1.tar.gz
+mv gmp-4.3.2/ gmp
+mv mpfr-2.4.2/ mpfr
+mv mpc-0.8.1/ mpc
+mkdir -pv $BUILDDIR/final-gcc-2
+cd $BUILDDIR/final-gcc-2
+echo "libc_cv_forced_unwind=yes" > config.cache
+echo "libc_cv_c_cleanup=yes" >> config.cache
+$GCC_SRC/configure --build=$BUILDMACH --target=$TARGETMACH --prefix=$INSTALLDIR --with-sysroot=$SYSROOTDIR --enable-languages="c,c++" --with-gnu-as --with-gnu-ld --disable-multilib --with-float=soft --disable-sjlj-exceptions --disable-nls --enable-threads=posix --disable-libmudflap --disable-libssp --enable-long-longx --with-shared
+make
+make install
+
+### usage
+export INSTALLDIR=~/workbench/gcc-g++-4.8.2/arm
+export PATH=$INSTALLDIR/bin:$PATH
+export TARGETMACH=arm-none-linux-gnueabi
+export BUILDMACH=i686-pc-linux-gnu
+export CROSS=arm-none-linux-gnueabi-
+export CC=${CROSS}gcc
+export LD=${CROSS}ld
+export AS=${CROSS}as
+export CXX=${CROSS}g++
+
