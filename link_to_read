@@ -73,4 +73,9 @@ sample product: http://www.lebiotek.com/products/greenhouse-climate-control/
 
 a complete product with SW: https://agrowtek.com/component/page,shop.product_details/flypage,flypage.tpl/product_id,81/category_id,14/option,com_virtuemart/Itemid,26/
 
+check ST Nucleo board in use: NUCLEO-F401RE
+link: http://www.st.com/content/st_com/en/products/evaluation-tools/product-evaluation-tools/mcu-eval-tools/stm32-mcu-eval-tools/stm32-mcu-nucleo/nucleo-f401re.html
+the processor is: STM32F401RE
+link: http://www.st.com/content/st_com/en/products/microcontrollers/stm32-32-bit-arm-cortex-mcus/stm32f4-series/stm32f401/stm32f401re.html
+
 
