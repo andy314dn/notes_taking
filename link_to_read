@@ -85,3 +85,7 @@ trang web hay ve dong luc hoc lap trinh: vinacode.net <-- doc thuong xuyen
 
 infographics for history of programming language: http://blog.rackspace.com/infographic-evolution-of-computer-languages/
 
+typo:
+1/ Lecture 17 - slide #15: User --> UserMState
+2/ Lecture 18 - slide #11: in wakeup(status s): line #4: PCB --> ProcTbl
+
