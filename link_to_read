@@ -102,3 +102,12 @@ the GNU Make Book
 Valgrind 3.3 - Advanced Debugging and Profiling for Gnu/Linux Applications
 
 
+20160726: What is the difference between physical storage and logical storage?
++ Physical storage involves how data is written and organized on storage media
++ Logical storage involves how OS and BIOS organize and view storaged data 
+
+What is the difference between logical vs physical address storage?
++ A physical address is concrete and never changes. It is set in memory.
++ A logical address is made up of a base pointer and an offset. It keeps programs running
+	parallel and not intertwining.
+
