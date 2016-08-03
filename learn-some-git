@@ -7,3 +7,18 @@ What is Git?
         + easy exchange of code between dev
         + well-suited to the collaborative development model used in OS projects
         
+help can be found by: ***git help <command>
+
+set up your name and email address:
+    + they will be referenced in each of your commits
+    ***git config --global user.name 'My Name'
+    ***git config --global user.email me@mydomain.net
+    
+to start working on a project: ***git clone...
+
+explore the History: ***git log
+    + list all the commits
+    + the latest commit is the first
+    
+    
+useful link: http://rogerdudler.github.io/git-guide/
