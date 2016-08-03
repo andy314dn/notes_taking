@@ -20,5 +20,59 @@ explore the History: ***git log
     + list all the commits
     + the latest commit is the first
     
+***git log -p: list the commits with the corresponding diff
+
+the history in Git is a graph of commits
+
+visualize the history: gitk
+gitk is a graphical tool that represents the history of the current Git repo
+
+visualize the history: cgit
+cgits is another great tool - a web interface to Git
+
+update your (local) repo: ***git pull
+    + Internally, it does two things:
+    ***git fetch: fetch the new changes from the remove repo
+    ***git merge: merge them with the current branch
     
-useful link: http://rogerdudler.github.io/git-guide/
+list the existing tags: ***git tag -l
+
+check out a working copy of the repo at a given tag: ***git checkout <tagname>
+
+get the list of changes between a given tag and the latest available version: ***git log v2.6.30..master
+
+list changes with diff on a given file between two tags: ***git log -p v2.6.29..v2.6.30 MAINTAINERS
+
+with gitk: ***gitk v2.6.30..master
+
+branches:
+    - create a branch:
+        ***git branch <branchname>
+    - move to this branch
+        ***git checkout <branchname>
+    - both at once (create and switch to branch)
+        ***git checkout -b <branchname>
+    - list of local branches:
+        ***git branch
+    - list of all branches, including remote branches
+        ***git branch -a
+        
+making changes:
+    - edit a file with your favorite text editor
+    - get the status of your working copy
+        ***git status
+    - Git has a feature called the INDEX, which allows you to stage your commits before committing them.
+      It allows to commit only part of your modifications, by file or even by chunk.
+    - on each modified file
+        ***git add <filename>
+    - commit (no need to be online or connected to commit)
+        ***git commit -s (Linux requires the -s option to sign your changes)
+    - if all modified files should be part of the commit
+        ***git commit -as
+    
+    
+useful link: 
++ http://rogerdudler.github.io/git-guide/
++ http://schacon.github.io/git/user-manual.html
+
+TODO: add key git
