@@ -1,0 +1,9 @@
+What is Git?
+    - a version control system, like CVS, SVN, Perforce, or ClearCase
+    - contrary to CVS or SVN, Git is a distributed version control system
+        + no central repository
+        + everybody has a local repository
+        + local branches are possible, and very important
+        + easy exchange of code between dev
+        + well-suited to the collaborative development model used in OS projects
+        
