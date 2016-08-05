@@ -115,4 +115,13 @@ Read: TI's Wireless connectivity for the Internet of Things
 
 useful for PROGRAMMING: https://www.ntu.edu.sg/home/ehchua/programming/index.html
 
+Characters that are written to a stream are normally accumulated and transmitted asynchronously to the file in a block, instead of appearing as soon as they are output by the application program. Similarly, streams often retrieve input from the host environment in blocks rather than on a character-by-character basis. This is called "buffering"
+There are 3 kinds of buffering strategies:
++ characters written to or read from an *unbuffered* stream are transmitted individually to or from the file as soon as possible
++ characters written to a *line buffered* stream are transmitted to the file in blocks when a newline character is encountered
++ characters written to or read from a *fully buffered* stream are transmitted to or from the file in blocks of arbitrary size
+
+GitHub is a web-based hosting service for SW development projects that use the Git revision control system.
+
+
 
