@@ -1,0 +1,21 @@
+for memory (RAM):
+	NC: number of Channels
+	NR: number of Ranks
+	NB: number of Banks
+
+
+look for book:
+Embedded Programming with Android: Bringing up an Android system from Scratch
+
+
+kill annoyed programs:
+	pkill sealert
+	pkill gnome-abrt (not tested yet)
+
+
+list all windows:
+	xlsclients
+
+
+
+
