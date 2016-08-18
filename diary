@@ -17,5 +17,14 @@ list all windows:
 	xlsclients
 
 
+append to PATH
+	PATH=$PATH:~/x-tools/arm-cortexa5-linux-uclibcgnueabihf/bin/
+	export PATH
+
+MLO:
+	Mmc LOader (or)
+	Minimal LOader
 
 
+kwb:
+	Kirkwood Boot Image
