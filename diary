@@ -28,3 +28,14 @@ MLO:
 
 kwb:
 	Kirkwood Boot Image
+
+
+add "current user" to group:
+	sudo usermod -a -G dialout $USER
+
+
+specify the cross-compiler prefix:
+	export CROSS_COMPILE=arm-linux-
+
+
+
