@@ -38,4 +38,7 @@ specify the cross-compiler prefix:
 	export CROSS_COMPILE=arm-linux-
 
 
+CDC - Communication Device Class
+ACM - Abstract Control Model
+
 
