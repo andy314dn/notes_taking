@@ -1,3 +1,10 @@
+download content of a link, no structure of the origin:
+	wget -nd --execute robots=off -r -l 1 -A pdf,tar.xz url
+
+extract tar.xz:
+	tar xf <name-of-file>
+	tar xvJf <name-of-file>
+
 for memory (RAM):
 	NC: number of Channels
 	NR: number of Ranks
