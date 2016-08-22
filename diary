@@ -4,6 +4,8 @@ download content of a link, no structure of the origin:
 extract tar.xz:
 	tar xf <name-of-file>
 	tar xvJf <name-of-file>
+extract tar.bz2:
+	tar xfj <name-of-file>
 
 for memory (RAM):
 	NC: number of Channels
