@@ -51,3 +51,9 @@ CDC - Communication Device Class
 ACM - Abstract Control Model
 
 
+tftp-hpa: HPA is the name of the author of the binary
+	config file: /etc/default/tftpd-hpa
+	shared location: /var/lib/tftpboot (specified in config file)
+	start service: sudo service tftpd-hpa restart
+
+
