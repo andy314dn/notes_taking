@@ -75,7 +75,11 @@ useful link:
 + http://rogerdudler.github.io/git-guide/
 + http://schacon.github.io/git/user-manual.html
 
-TODO: add key git
+
+add key git (for SSH only)
+for https protocol, use this command for not to type pwd every time
+	git config --global credential.helper wincred
+
 
 Glossary:
 SCM - Source Code Management
