@@ -57,4 +57,4 @@ tftp-hpa: HPA is the name of the author of the binary
 	start service: sudo service tftpd-hpa restart
 
 Testing Git laptop --> pwd or not???
-
+It's not good! Next is...
