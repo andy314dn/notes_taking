@@ -56,7 +56,4 @@ tftp-hpa: HPA is the name of the author of the binary
 	shared location: /var/lib/tftpboot (specified in config file)
 	start service: sudo service tftpd-hpa restart
 
-Testing Git laptop --> pwd or not???
-It's not good! Next is...
-TESTING
 
