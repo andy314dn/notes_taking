@@ -80,3 +80,9 @@ partitions of:
 	/dev/mtdblockX	- flash storage
 
 
+root filesystem can be integrated into the kernel image, called 'initramfs'
+	compressed archive of the filesystem into the kernel image
+	compressed archive can also be loaded separately by the bootloader
+
+
+
