@@ -80,7 +80,7 @@ add key git (for SSH only)
 for https protocol, use this command for not to type pwd every time
 	(windows) git config --global credential.helper wincred
 	(linux)   git config --global credential.helper 'cache --timeout 7200'
-
+			(remember for 2 hours???)
 
 Glossary:
 SCM - Source Code Management
