@@ -57,3 +57,15 @@ tftp-hpa: HPA is the name of the author of the binary
 	start service: sudo service tftpd-hpa restart
 
 
+by default, the kernel build system assumes that the kernel is 
+being built for the host architecture (i.e. native compilation)
+
+
+##########
+Device Tree Section:
+	read Device Tree Usage at elinux.org
+##########
+
+
+mount -t type device directory
+
