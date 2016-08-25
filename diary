@@ -67,5 +67,16 @@ Device Tree Section:
 ##########
 
 
-mount -t type device directory
+mount -t type device mountpoint
+	type: the type of filesystem
+	device: storage device, or network location to mount
+	mountpoint: directory where files of storage device or network location
+		    will be accessible
+
+
+partitions of:
+	/dev/sdXY 	- hard disk (ATA hard drive) or USB key
+	/dev/mmcblkXpY	- SD card
+	/dev/mtdblockX	- flash storage
+
 
