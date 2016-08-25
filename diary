@@ -105,3 +105,16 @@ Filesystem Hierarchy Standard:
 	/var	variable data files
 	
 	
+see USB drive:
+	fdisk -l
+	lsblk
+	lsblk --output NAME,FSTYPE,LABEL,UUID,MODE
+	df -h
+	parted -l
+	hwinfo --block --short
+
+
+unmount usb:
+	umount /dev/sdX
+
+
