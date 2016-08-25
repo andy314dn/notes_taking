@@ -85,4 +85,23 @@ root filesystem can be integrated into the kernel image, called 'initramfs'
 	compressed archive can also be loaded separately by the bootloader
 
 
-
+Filesystem Hierarchy Standard:
+	/bin	basic programs
+	/boot	kernel image
+	/dev	device file
+	/etc	system-wide configuration
+	/lib	basic libraries
+	/media	mount points for removable media
+	/mnt	mount points for static media
+	/proc	mount point for the 'proc' virtual filesystem
+	/root	home directory of the 'root' user
+	/sbin	basic system programs
+	/sys	mount point for the 'sysfs' virtual filesystem
+	/tmp	temporary files
+	/usr
+		/usr/bin  non-basic programs
+		/usr/lib  non-basic libraries
+		/usr/sbin non-basic system programs
+	/var	variable data files
+	
+	
