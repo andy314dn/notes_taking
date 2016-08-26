@@ -129,3 +129,6 @@ unmount usb:
 		      e.g. NOR flash, NAND flash
 
 
+list of all block devices:
+	cat /proc/partitions
+	ls /sys/block/
