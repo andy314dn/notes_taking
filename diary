@@ -118,3 +118,14 @@ unmount usb:
 	umount /dev/sdX
 
 
+2 types of storage devices:
+	block device: read/written on a per-block basis, 
+		      in random order, w/o erasing
+		      e.g. hard disk, floppy disk, RAM disk
+		           USB key, Compact Flash, SD card
+	flash device: driven by a controller on the SoC
+		      can be read, but writing requires erasing,
+		      and often occurs on a larger size than the "block" size
+		      e.g. NOR flash, NAND flash
+
+
