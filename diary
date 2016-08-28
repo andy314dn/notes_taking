@@ -132,3 +132,11 @@ unmount usb:
 list of all block devices:
 	cat /proc/partitions
 	ls /sys/block/
+
+
+Flash chips:
+	page: unit of PROGRAM op
+	block: unit of ERASE op
+
+
+
