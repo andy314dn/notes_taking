@@ -7,3 +7,14 @@ gsettings set org.gnome.desktop.background show-desktop-icons true
 git config --global http.sslverify false
 export https_proxy=https://donkey.cybersoft.vn:8080
 
+
+#to add user to sudo
+echo ' username ALL=(ALL)   ALL' >> /etc/sudoers
+
+#curl proxy:
+export http_proxy=http://donkey.cybersoft.vn:8080
+export htts_proxy=$https_proxy
+
+#source for Xilinx:
+. /opt/Xilinx/14.7/ISE_DS/settings64.sh
+
