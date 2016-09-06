@@ -1,0 +1,9 @@
+#Display desktop icon
+sudo yum install gnome-tweak-tool -y
+gsettings set org.gnome.desktop.background show-desktop-icons true
+
+
+#avoid git clone error:
+git config --global http.sslverify false
+export https_proxy=https://donkey.cybersoft.vn:8080
+
