@@ -1,8 +1,0 @@
-###REFERENCES: http://itswapshop.com/tutorial/how-get-and-download-all-file-type-links-web-page-linux
-### ./script_down_links <some_link> <filetype {pdf,doc,ppt,...}>
-### Multiple types: 'type1\|type2\|type3'
-
-#!/bin/bash
-lynx --dump $1 | awk '/http/{print $2}' | grep $2 > /tmp/file.txt
-for i in $(cat /tmp/file.txt); do wget $i; done
-
