@@ -139,4 +139,8 @@ Flash chips:
 	block: unit of ERASE op
 
 
+Good link for System Verilog:
+	http://www.ece.mcmaster.ca/~nicola/3dq5/design_synthesis.pdf
+	http://www.cs.columbia.edu/~sedwards/classes/2014/4840/verilog.pdf
+
 
