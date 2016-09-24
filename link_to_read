@@ -126,4 +126,7 @@ GitHub is a web-based hosting service for SW development projects that use the G
 format specification: %[flags][width][.precision][modifier]<type>
 type: d, i, x, X, u, c, s, f, d, e, E, %, g (shorter btw e and f)
 
+why i2c:
+https://learn.sparkfun.com/tutorials/i2c
+
 
