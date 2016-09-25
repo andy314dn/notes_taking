@@ -129,4 +129,8 @@ type: d, i, x, X, u, c, s, f, d, e, E, %, g (shorter btw e and f)
 why i2c:
 https://learn.sparkfun.com/tutorials/i2c
 
+to verify the signature of the source code:
+gpg --verify <KERNEL_SRC>.tar.bz2.sign <KERNEL_SRC>.tar.bz2
+
+
 
