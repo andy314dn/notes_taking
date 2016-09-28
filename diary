@@ -144,3 +144,9 @@ Good link for System Verilog:
 	http://www.cs.columbia.edu/~sedwards/classes/2014/4840/verilog.pdf
 
 
+picocom and send file:
+picocom -b 9600 /dev/ttyUSB0 --send-cmd "ascii-xfr -s" --receive-cmd "ascii-xfr -r"
+picocom -b 9600 /dev/ttyUSB0 -s "ascii-xfr -s" -v "ascii-xfr -r"
+
+
+
