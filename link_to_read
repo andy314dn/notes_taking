@@ -133,4 +133,5 @@ to verify the signature of the source code:
 gpg --verify <KERNEL_SRC>.tar.bz2.sign <KERNEL_SRC>.tar.bz2
 
 
+COS461 2012 2014 2016
 
