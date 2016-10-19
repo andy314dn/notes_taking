@@ -21,3 +21,7 @@ export htts_proxy=$https_proxy
 #remove the spurious CR character
 sed -i -e 's/\r$//' setup.sh
 
+#add symlink
+ln -sf $(echo $(cat contrib)) contrib
+ln -sf $(echo $(cat std)) std
+
