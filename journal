@@ -25,3 +25,6 @@ sed -i -e 's/\r$//' setup.sh
 ln -sf  $(cat contrib) contrib
 ln -sf  $(cat std) std
 
+#fix opt
+find . -name '*.opt' -print | xargs dos2unix
+
